@@ -313,6 +313,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                       Certification #
                     </Link>
                     <Link
+                      to="/settings?tab=organizations"
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center py-2 px-2.5 rounded-md text-xs font-semibold transition-all",
+                        location.pathname === '/settings' && location.search.includes('tab=organizations')
+                          ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20"
+                          : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-800/20"
+                      )}
+                    >
+                      Organizations
+                    </Link>
+                    <Link
                       to="/settings?tab=signature"
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
@@ -333,7 +345,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="mt-6 px-2">
               <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-xl p-3 border border-dashed border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Sponsored</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Sponsored</span>
+                    <span className="text-[7.5px] text-gray-450 dark:text-gray-500 font-medium lowercase tracking-wide italic">(keep it free :))</span>
+                  </div>
                   <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
                 </div>
                 <div className="aspect-[16/9] bg-white dark:bg-gray-900 rounded-lg flex items-center justify-center border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative group cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50">

@@ -54,6 +54,7 @@ service cloud.firestore {
         && (!('avatar' in data) || (data.avatar is string || data.avatar == null))
         && (!('bio' in data) || (data.bio is string || data.bio == null))
         && (!('state' in data) || (data.state is string || data.state == null))
+        && (!('organizations' in data) || (data.organizations is list && data.organizations.size() <= 20 && (data.organizations.size() == 0 || (data.organizations.size() > 0 && data.organizations[0] is string))))
         && (!('signature' in data) || (data.signature is string && data.signature.size() <= 1048576)); // 1MB for sig
     }
 
@@ -99,7 +100,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().id == userId && incoming().createdAt is number;
       allow update: if isOwner(userId) && isValidUser(incoming())
-        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'role', 'certificationNumber', 'avatar', 'bio', 'state', 'signature', 'monthlyDirectHours', 'manualMonthlyDirectHours', 'lastLoginAt']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['id', 'createdAt', 'name', 'email', 'role', 'certificationNumber', 'avatar', 'bio', 'state', 'signature', 'monthlyDirectHours', 'manualMonthlyDirectHours', 'lastLoginAt', 'organizations']);
       allow delete: if isOwner(userId) || isAdmin();
     }
 

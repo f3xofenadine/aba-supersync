@@ -227,8 +227,8 @@ export const Dashboard = () => {
                             <p className="text-[9px] text-gray-400 font-bold uppercase">Supervision</p>
                           </div>
                           <div className="text-center">
-                            <p className={cn("text-xs font-bold", stats.observationCount > 0 ? "text-teal-600" : "text-red-500")}>{stats.observationCount}</p>
-                            <p className="text-[9px] text-gray-400 font-bold uppercase">Obs</p>
+                            <p className={cn("text-xs font-bold", stats.observationCount > 0 ? "text-teal-600 dark:text-teal-400" : "text-red-500 dark:text-red-400")}>{stats.observationCount}</p>
+                            <p className={cn("text-[9px] font-bold uppercase", stats.observationCount > 0 ? "text-gray-400" : "text-red-500 dark:text-red-400")}>Obs</p>
                           </div>
                           <Link to="/history">
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg">

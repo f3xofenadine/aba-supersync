@@ -10,6 +10,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function normalizeOrgName(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '') // remove punctuation
+    .replace(/\b(inc|llc|gmbh|co|corp|corporation|ltd|limited|company|association|assoc|behavioral|therapy|services|group)\b/gi, '') // remove common suffixes
+    .replace(/\s+/g, ' ') // collapse multi-spaces
+    .trim();
+}
+
+export function hasOrganizationOverlap(orgsA?: string[], orgsB?: string[]): boolean {
+  if (!orgsA || !orgsB || orgsA.length === 0 || orgsB.length === 0) return false;
+  const cleanA = orgsA.map(normalizeOrgName).filter(Boolean);
+  const cleanB = orgsB.map(normalizeOrgName).filter(Boolean);
+  return cleanA.some(a => cleanB.includes(a));
+}
+
 export function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

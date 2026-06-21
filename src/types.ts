@@ -17,6 +17,7 @@ export interface User {
   signature?: string; // Data URL of the signature
   monthlyDirectHours?: number; // Current month's accrued direct hours (computed)
   manualMonthlyDirectHours?: Record<string, number>; // Map of YYYY-MM to manual hour total
+  organizations?: string[]; // Multiple companies or organizations
   createdAt: number;
 }
 

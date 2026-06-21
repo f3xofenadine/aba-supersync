@@ -8,10 +8,10 @@ import { useApp } from '../hooks/useApp';
 import { Button, Input, Card } from './ui';
 import { UserRole } from '../types';
 import { motion } from 'motion/react';
-import { ShieldCheck, UserCircle, BriefcaseMedical, CheckCircle2, ArrowRight, LogOut, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, UserCircle, BriefcaseMedical, CheckCircle2, ArrowRight, LogOut, Mail, Lock, AlertCircle, Loader2, X, Building2 } from 'lucide-react';
 
 export const AuthView = () => {
-  const { login, loginWithRedirect, loginWithEmail, signupWithEmail, signup, logout, firebaseUser, currentUser, resetDatabase, isAdmin } = useApp();
+  const { login, loginWithRedirect, loginWithEmail, signupWithEmail, signup, logout, firebaseUser, currentUser, resetDatabase, isAdmin, users } = useApp();
   const [role, setRole] = React.useState<UserRole>('RBT');
   const [isFinishing, setIsFinishing] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
@@ -25,6 +25,8 @@ export const AuthView = () => {
     email: '',
     certNumber: '',
   });
+  const [orgTags, setOrgTags] = React.useState<string[]>([]);
+  const [newOrgInput, setNewOrgInput] = React.useState('');
 
   // Keep track of any active safety timer for Google Popups
   const googleTimerRef = React.useRef<any>(null);
@@ -56,6 +58,42 @@ export const AuthView = () => {
     }
   }, [firebaseUser, currentUser]);
 
+  // Compute existing unique orgs from other user accounts
+  const existingOrgs = React.useMemo(() => {
+    const orgSet = new Set<string>();
+    users.forEach(u => {
+      if (u.organizations && Array.isArray(u.organizations)) {
+        u.organizations.forEach(o => {
+          if (o && o.trim()) {
+            orgSet.add(o.trim());
+          }
+        });
+      }
+    });
+    return Array.from(orgSet);
+  }, [users]);
+
+  const orgSuggestions = React.useMemo(() => {
+    if (!newOrgInput.trim()) return [];
+    const query = newOrgInput.toLowerCase();
+    return existingOrgs.filter(org => 
+      org.toLowerCase().includes(query) && 
+      !orgTags.some(tag => tag.toLowerCase() === org.toLowerCase())
+    );
+  }, [newOrgInput, existingOrgs, orgTags]);
+
+  const addOrgTag = (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed && !orgTags.some(t => t.toLowerCase() === trimmed.toLowerCase())) {
+      setOrgTags([...orgTags, trimmed]);
+    }
+    setNewOrgInput('');
+  };
+
+  const removeOrgTag = (indexToRemove: number) => {
+    setOrgTags(orgTags.filter((_, idx) => idx !== indexToRemove));
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
@@ -64,6 +102,7 @@ export const AuthView = () => {
       email: formData.email,
       role: role,
       certificationNumber: formData.certNumber,
+      organizations: orgTags,
     });
   };
 
@@ -115,7 +154,7 @@ export const AuthView = () => {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Clinical Supervision & Compliance Portal</p>
         </div>
 
-        <Card className="p-8 relative overflow-hidden">
+        <Card className="p-8 relative overflow-visible">
           {isFinishing ? (
             <div className="space-y-6">
               <div className="text-center mb-6">
@@ -197,6 +236,65 @@ export const AuthView = () => {
                     value={formData.certNumber}
                     onChange={e => setFormData({ ...formData, certNumber: e.target.value })}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company / Organization name(s) (Optional)</label>
+                  
+                  {orgTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                      {orgTags.map((tag, idx) => (
+                        <div 
+                          key={idx} 
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-full border border-indigo-100 dark:border-indigo-800/40"
+                        >
+                          <span>{tag}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => removeOrgTag(idx)} 
+                            className="p-1 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800/60 inline-flex items-center justify-center text-indigo-500"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <Input 
+                      type="text" 
+                      placeholder="e.g. Hope Autism Services (press Enter to add)" 
+                      value={newOrgInput}
+                      onChange={e => setNewOrgInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (newOrgInput.trim()) {
+                            addOrgTag(newOrgInput);
+                          }
+                        }
+                      }}
+                    />
+                    
+                    {orgSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-xl shadow-lg divide-y divide-gray-50 dark:divide-gray-800">
+                        <div className="p-2 text-[10px] uppercase tracking-wider font-extrabold text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Suggestions in current network</div>
+                        {orgSuggestions.map((org, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => addOrgTag(org)}
+                            className="w-full text-left px-3 py-2.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium transition-colors flex items-center gap-2"
+                          >
+                            <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>{org}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Type organization & press Enter. Selecting existing suggestions prevents typos</p>
                 </div>
 
                 <div className="pt-2">

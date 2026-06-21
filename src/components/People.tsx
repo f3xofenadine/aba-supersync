@@ -17,10 +17,12 @@ import {
   Mail, 
   Send,
   UserX,
-  RefreshCw
+  RefreshCw,
+  Building2,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, hasOrganizationOverlap, normalizeOrgName } from '../lib/utils';
 import { Link, useSearchParams } from 'react-router-dom';
 
 export const PeopleView = () => {
@@ -118,6 +120,45 @@ export const PeopleView = () => {
   }, [users, associations, currentUser.id, searchTerm]);
 
   const foundUserByEmail = searchTerm && searchTerm.includes('@') && !findPeopleUsers.some(u => u.email === searchTerm.toLowerCase()) && !connectedUsers.some(u => u.email === searchTerm.toLowerCase());
+
+  // Compute recommended users sharing at least one organization
+  const recommendedUsers = React.useMemo(() => {
+    return users.filter(u => {
+      if (u.id === currentUser.id) return false;
+
+      // Filter by compatible roles
+      const isCurrentUserBcba = currentUser.role === 'BCBA' || currentUser.role === 'BCBA-D';
+      const isCurrentUserRbt = currentUser.role === 'RBT';
+      const isTargetBcba = u.role === 'BCBA' || u.role === 'BCBA-D';
+      const isTargetRbt = u.role === 'RBT';
+
+      if (isCurrentUserBcba && !isTargetRbt) return false;
+      if (isCurrentUserRbt && !isTargetBcba) return false;
+
+      // Must not be already associated
+      const assoc = getAssoc(u.id);
+      if (assoc) return false;
+
+      // Must share an organization
+      return hasOrganizationOverlap(currentUser.organizations, u.organizations);
+    });
+  }, [users, associations, currentUser.id, currentUser.organizations]);
+
+  // Exclude recommended users from the general directory if not searching
+  const directoryUsers = React.useMemo(() => {
+    if (searchTerm) return findPeopleUsers;
+    const recommendedSet = new Set(recommendedUsers.map(u => u.id));
+    return findPeopleUsers.filter(u => !recommendedSet.has(u.id));
+  }, [findPeopleUsers, recommendedUsers, searchTerm]);
+
+  // Identify shared organization names
+  const getSharedOrgs = (otherUser: any) => {
+    if (!currentUser.organizations || !otherUser.organizations) return [];
+    const normalizedCurrent = currentUser.organizations.map(o => normalizeOrgName(o));
+    return otherUser.organizations.filter((org: string) => 
+      normalizedCurrent.includes(normalizeOrgName(org))
+    );
+  };
 
   const sendEmailInvite = () => {
     const subject = encodeURIComponent("Invitation to join my supervision network on SuperSync");
@@ -455,15 +496,156 @@ export const PeopleView = () => {
             )}
           </div>
 
+          {/* Recommendations Section */}
+          {!searchTerm && (
+            <section className="space-y-4 pb-8 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
+                  <h3 className="text-xs font-bold text-gray-800 dark:text-gray-150 uppercase tracking-widest">
+                    Recommended Matches (Shared Organizations)
+                  </h3>
+                  {recommendedUsers.length > 0 && (
+                    <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/30">
+                      {recommendedUsers.length} suggested
+                    </span>
+                  )}
+                </div>
+                <Link 
+                  to="/settings?tab=organizations"
+                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold hover:underline transition-all"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  Add/Update Organization
+                </Link>
+              </div>
+
+              {recommendedUsers.length === 0 ? (
+                <div className="py-16 px-6 text-center bg-gray-50/40 dark:bg-gray-900/10 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 max-w-xl mx-auto my-4">
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Building2 className="w-6 h-6 text-indigo-500" />
+                  </div>
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">No recommended matches found</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
+                    Provider recommendations are based on shared organizations. Add your clinics, companies, or schools to match with other providers in the same spaces automatically.
+                  </p>
+                  <Link 
+                    to="/settings?tab=organizations"
+                    className="inline-flex items-center gap-1.5 mt-5 px-3 py-1.5 bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-850 hover:border-indigo-200 dark:hover:border-indigo-850 hover:bg-indigo-50/10 dark:hover:bg-indigo-950/10 text-xs font-bold rounded-xl shadow-sm transition-all"
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    Configure Your Organizations
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <AnimatePresence mode="popLayout">
+                    {recommendedUsers.map(user => {
+                      const assoc = getAssoc(user.id);
+                      const shared = getSharedOrgs(user);
+                      return (
+                        <motion.div
+                          layout
+                          key={user.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                        >
+                          <Card className="p-6 h-full flex flex-col justify-between hover:shadow-lg transition-all bg-gradient-to-b from-indigo-50/20 to-white dark:from-indigo-950/5 dark:to-gray-900 border-indigo-150/60 dark:border-indigo-900/40 relative overflow-hidden">
+                            {/* Recommended Indicator badge */}
+                            <div className="absolute right-0 top-0 bg-indigo-600 dark:bg-indigo-500 text-white font-bold text-[9px] uppercase tracking-wider px-3 py-1 rounded-bl-xl shadow-md flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 fill-white" />
+                              <span>Recommended</span>
+                            </div>
+
+                            <div className="flex flex-col items-center text-center mt-2">
+                              <img 
+                                src={user.avatar} 
+                                className="w-20 h-20 rounded-full border-4 border-indigo-100/50 dark:border-indigo-900 shadow-md mb-3" 
+                              />
+                              <span className="px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-full text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-widest mb-1.5 align-middle">
+                                {user.role}
+                              </span>
+                              <h3 className="text-base font-bold text-gray-900 dark:text-white">{user.name}</h3>
+                              <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">{user.certificationNumber || 'Cert # Not listed'}</p>
+                              
+                              {/* Shared Organizations Lists */}
+                              {shared.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-1 justify-center max-w-full">
+                                  {shared.map((org: string, oIdx: number) => (
+                                    <span key={oIdx} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/20 rounded-md animate-fade-in">
+                                      <Building2 className="w-3 h-3 text-teal-500" />
+                                      {org}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <p className="text-xs text-gray-500 dark:text-gray-450 mt-3.5 italic px-2 line-clamp-2">{user.bio || 'Available for supervision collaboration.'}</p>
+                            </div>
+                            
+                            <div className="mt-6 pt-4 border-t border-gray-50 dark:border-gray-850 w-full">
+                              {assoc || loadingIds.has(user.id) ? (
+                                <div className="flex flex-col gap-2">
+                                  {assoc?.status === 'PENDING' && assoc.senderId !== currentUser.id ? (
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        className="flex-1 border-gray-255 dark:border-gray-700 text-red-650 hover:bg-red-50"
+                                        onClick={() => updateAssociationStatus(assoc.id, 'DECLINED')}
+                                      >
+                                        Decline
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700"
+                                        onClick={() => updateAssociationStatus(assoc.id, 'ACCEPTED')}
+                                      >
+                                        Accept
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className={cn(
+                                      "w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors",
+                                      assoc?.status === 'ACCEPTED' ? "bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400" :
+                                      "bg-amber-50/70 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400"
+                                    )}>
+                                      {assoc?.status === 'ACCEPTED' ? <UserCheck className="w-4 h-4" /> : <Clock className="w-4 h-4 animate-pulse" />}
+                                      {assoc?.status === 'ACCEPTED' ? 'Already Connected' : 'Association Request Pending'}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <Button 
+                                  className="w-full gap-2 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 border-none hover:shadow-md transition-all font-semibold text-xs" 
+                                  onClick={() => handleAssociate(user.id)}
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                  Connect & Collaborate
+                                </Button>
+                              )}
+                            </div>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Search Result List */}
-          <section className="space-y-4">
-            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              {searchTerm ? 'Search Results' : 'Registered Providers Available to Add'}
-            </h3>
+          {searchTerm && (
+            <section className="space-y-4">
+              <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                Search Results
+              </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
-                {findPeopleUsers.map(user => {
+                {directoryUsers.map(user => {
                   const assoc = getAssoc(user.id);
                   return (
                     <motion.div
@@ -484,6 +666,19 @@ export const PeopleView = () => {
                           </span>
                           <h3 className="text-base font-bold text-gray-900 dark:text-white">{user.name}</h3>
                           <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">{user.certificationNumber || 'Cert # Not listed'}</p>
+                          
+                          {/* Display user's organizations if they exist */}
+                          {user.organizations && user.organizations.length > 0 && (
+                            <div className="mt-2.5 flex flex-wrap gap-1 justify-center max-w-full animate-fade-in">
+                              {user.organizations.map((org: string, oIdx: number) => (
+                                <span key={oIdx} className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/80 rounded-md truncate max-w-[130px]">
+                                  <Building2 className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+                                  {org}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
                           <p className="text-xs text-gray-500 dark:text-gray-450 mt-2 italic px-2 line-clamp-2">{user.bio || 'Available for supervision collaboration.'}</p>
                         </div>
                         
@@ -549,6 +744,7 @@ export const PeopleView = () => {
               )}
             </div>
           </section>
+          )}
         </div>
       )}
     </div>

@@ -16,14 +16,16 @@ import {
   AlertCircle, 
   CheckCircle2,
   Settings,
-  Trash2
+  Trash2,
+  Building2,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 export const SettingsView = () => {
-  const { currentUser, updateUser, resetDatabase, isAdmin, deleteAccount } = useApp();
+  const { currentUser, updateUser, resetDatabase, isAdmin, deleteAccount, users } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Align active tab with url parameter or default to 'profile'
@@ -42,6 +44,49 @@ export const SettingsView = () => {
   const [loading, setLoading] = React.useState(false);
   const [confirmReset, setConfirmReset] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [orgInput, setOrgInput] = React.useState('');
+
+  const currentUserOrgs = currentUser?.organizations || [];
+
+  const existingOrgs = React.useMemo(() => {
+    const orgSet = new Set<string>();
+    users.forEach(u => {
+      if (u.organizations && Array.isArray(u.organizations)) {
+        u.organizations.forEach(o => {
+          if (o && o.trim()) {
+            orgSet.add(o.trim());
+          }
+        });
+      }
+    });
+    return Array.from(orgSet);
+  }, [users]);
+
+  const orgSuggestions = React.useMemo(() => {
+    if (!orgInput.trim()) return [];
+    const query = orgInput.toLowerCase();
+    return existingOrgs.filter(org => 
+      org.toLowerCase().includes(query) && 
+      !currentUserOrgs.some((tag: string) => tag.toLowerCase() === org.toLowerCase())
+    );
+  }, [orgInput, existingOrgs, currentUserOrgs]);
+
+  const handleAddOrg = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (currentUserOrgs.some((t: string) => t.toLowerCase() === trimmed.toLowerCase())) {
+      setOrgInput('');
+      return;
+    }
+    const updated = [...currentUserOrgs, trimmed];
+    await handleUpdateField({ organizations: updated }, 'Added company association!');
+    setOrgInput('');
+  };
+
+  const handleRemoveOrg = async (indexToRemove: number) => {
+    const updated = currentUserOrgs.filter((_: any, idx: number) => idx !== indexToRemove);
+    await handleUpdateField({ organizations: updated }, 'Removed company association.');
+  };
 
   React.useEffect(() => {
     if (currentUser) {
@@ -144,6 +189,12 @@ export const SettingsView = () => {
             label="Certification #" 
           />
           <TabButton 
+            active={activeTabFromUrl === 'organizations'} 
+            onClick={() => setActiveTab('organizations')} 
+            icon={<Building2 className="w-4 h-4 shrink-0" />} 
+            label="Organizations" 
+          />
+          <TabButton 
             active={activeTabFromUrl === 'signature'} 
             onClick={() => setActiveTab('signature')} 
             icon={<PenTool className="w-4 h-4 shrink-0" />} 
@@ -169,7 +220,7 @@ export const SettingsView = () => {
         </aside>
 
         <main className="md:col-span-3">
-          <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800/80 shadow-sm relative overflow-hidden">
+          <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800/80 shadow-sm relative overflow-visible">
             <AnimatePresence>
               {statusMessage && (
                 <StatusMessage type={statusMessage.type} text={statusMessage.text} />
@@ -186,6 +237,18 @@ export const SettingsView = () => {
 
             {activeTabFromUrl === 'certification' && (
               <CertificationTab certNumber={certNumber} setCertNumber={setCertNumber} saveCertification={saveCertification} loading={loading} />
+            )}
+
+            {activeTabFromUrl === 'organizations' && (
+              <OrganizationsTab 
+                list={currentUserOrgs} 
+                onAdd={handleAddOrg} 
+                onRemove={handleRemoveOrg} 
+                suggestions={orgSuggestions} 
+                inputValue={orgInput} 
+                setInputValue={setOrgInput} 
+                loading={loading} 
+              />
             )}
 
             {activeTabFromUrl === 'signature' && (
@@ -305,6 +368,87 @@ const CertificationTab = ({ certNumber, setCertNumber, saveCertification, loadin
       </div>
       <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 px-6">Save Certification ID</Button>
     </form>
+  </motion.div>
+);
+
+const OrganizationsTab = ({ list, onAdd, onRemove, suggestions, inputValue, setInputValue, loading }: any) => (
+  <motion.div initial={{ opacity: 0, x: 5 }} animate={{ opacity: 1, x: 0 }} className="space-y-6 animate-fade-in">
+    <div>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Company & Organization List</h3>
+      <p className="text-xs text-gray-500 dark:text-gray-400">Manage company or organization affiliations. Providers who share organizations will be high-confidence recommended matches.</p>
+    </div>
+
+    <div className="space-y-5 max-w-lg">
+      <div className="space-y-2">
+        <label className="text-xs font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">My Connected Organizations</label>
+        {list.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 p-3.5 bg-gray-50 dark:bg-gray-950/40 border border-gray-100 dark:border-gray-800/80 rounded-xl">
+            {list.map((tag: string, idx: number) => (
+              <div 
+                key={idx} 
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-full border border-indigo-100 dark:border-indigo-800/40"
+              >
+                <span>{tag}</span>
+                <button 
+                  type="button" 
+                  onClick={() => onRemove(idx)} 
+                  className="p-0.5 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800/60 inline-flex items-center justify-center text-indigo-500"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 bg-gray-50/50 dark:bg-gray-850/20 text-xs text-start text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-150 dark:border-gray-800 rounded-xl">
+            You haven't listed any company/organization associations. Add them below!
+          </div>
+        )}
+      </div>
+
+      <div className="pt-2">
+        <div className="space-y-2">
+          <label className="text-xs font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">Add Association</label>
+          <div className="relative">
+            <div className="flex gap-2">
+              <Input 
+                className="bg-gray-50/50 dark:bg-gray-800/40 focus:ring-2 focus:ring-indigo-500 h-11" 
+                placeholder="Type and press Add/Enter..." 
+                value={inputValue} 
+                onChange={e => setInputValue(e.target.value)} 
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onAdd(inputValue);
+                  }
+                }}
+              />
+              <Button onClick={() => onAdd(inputValue)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 px-5 shrink-0">
+                Add
+              </Button>
+            </div>
+
+            {suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 z-50 mt-1.5 max-h-40 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-850 rounded-xl shadow-lg divide-y divide-gray-50 dark:divide-gray-800">
+                <div className="p-2 text-[10px] uppercase tracking-wider font-extrabold text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Existing Organizations</div>
+                {suggestions.map((org: string, idx: number) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onAdd(org)}
+                    className="w-full text-left px-3 py-2.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>{org}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Selecting from Suggestions avoids spelling discrepancies and aligns recommendation engines.</p>
+        </div>
+      </div>
+    </div>
   </motion.div>
 );
 
