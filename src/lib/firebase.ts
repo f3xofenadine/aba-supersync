@@ -15,16 +15,31 @@ declare global {
   }
 }
  
-// Helper to sanitize environment variables or local configs (handling wrapped quotes and empty strings)
+// Helper to sanitize environment variables or local configs (handling wrapped quotes, empty strings, and placeholders)
 function cleanValue(val: any): string | undefined {
   if (typeof val !== 'string') return undefined;
-  const trimmed = val.trim();
+  let trimmed = val.trim();
   if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return undefined;
   
   // Remove enclosing quotes if any
   if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1).trim() || undefined;
+    trimmed = trimmed.slice(1, -1).trim();
   }
+
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return undefined;
+
+  // Filter out placeholder templates (e.g. from copy-pasted .env.example)
+  const isPlaceholder = 
+    trimmed.includes('your-') || 
+    trimmed === 'AIza...' || 
+    trimmed.includes('1:123456789') || 
+    trimmed.includes('abcdef...') ||
+    trimmed === '123456789';
+
+  if (isPlaceholder) {
+    return undefined;
+  }
+  
   return trimmed;
 }
 

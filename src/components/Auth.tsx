@@ -208,46 +208,12 @@ export const AuthView = () => {
             </div>
           ) : (
             <div className="space-y-6 py-1">
-              {/* Elegant Tabs for Sign In vs Sign Up */}
-              <div className="grid grid-cols-2 bg-gray-100/80 dark:bg-gray-800/60 p-1.5 rounded-2xl border border-gray-200/50 dark:border-gray-700/30 mb-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signin');
-                    setAuthError('');
-                  }}
-                  className={`py-2.5 text-xs font-bold tracking-wide uppercase transition-all duration-350 rounded-xl ${
-                    authMode === 'signin'
-                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm font-extrabold'
-                      : 'text-gray-500 dark:text-gray-450 hover:text-gray-700 dark:hover:text-gray-200'
-                  }`}
-                >
-                  Log In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setAuthError('');
-                  }}
-                  className={`py-2.5 text-xs font-bold tracking-wide uppercase transition-all duration-350 rounded-xl ${
-                    authMode === 'signup'
-                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm font-extrabold'
-                      : 'text-gray-500 dark:text-gray-450 hover:text-gray-700 dark:hover:text-gray-200'
-                  }`}
-                >
-                  Create Account
-                </button>
-              </div>
-
               <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1.5">
+                  Welcome to ABA SuperSync
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {authMode === 'signin' 
-                    ? 'Log in to resume tracking and supervising clinical sessions.' 
-                    : 'Track your supervised clinical hours and remain fully in compliance.'}
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-normal max-w-[280px] mx-auto">
+                  Access your clinical compliance space via Google or secure email below.
                 </p>
               </div>
 
@@ -316,7 +282,8 @@ export const AuthView = () => {
               )}
 
               {/* Dedicated Google Auth pathway */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
+                {/* 1) Log In with Google (Existing Users) */}
                 <Button 
                   onClick={async () => {
                     setAuthError('');
@@ -339,21 +306,65 @@ export const AuthView = () => {
                     }
                   }}
                   disabled={authLoading}
-                  className="w-full py-6 flex flex-col items-center justify-center gap-1 bg-white dark:bg-gray-800 border-2 border-gray-200/80 dark:border-gray-700/60 hover:border-indigo-600 dark:hover:border-indigo-500 text-gray-900 dark:text-white transition-all shadow-sm hover:shadow-md rounded-2xl group"
+                  className="w-full py-5 flex flex-col items-center justify-center gap-1 bg-white dark:bg-gray-800 border-2 border-slate-200 dark:border-slate-700/60 hover:border-indigo-600 dark:hover:border-indigo-500 text-gray-900 dark:text-white transition-all shadow-sm hover:shadow-md rounded-2xl group text-left px-5 h-15"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 w-full">
                     {authLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                      <Loader2 className="w-5 h-5 animate-spin text-indigo-600 shrink-0" />
                     ) : (
-                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform" alt="Google" />
+                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform shrink-0" alt="Google" />
                     )}
-                    <span className="font-extrabold text-[15px]">
-                      {authMode === 'signin' ? 'Log In with Google' : 'Create Account with Google'}
-                    </span>
+                    <div className="flex-grow min-w-0">
+                      <span className="font-extrabold text-[14px] leading-tight block text-left">
+                        Log In with Google
+                      </span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-400 font-medium tracking-normal block text-left select-none leading-none mt-0.5 truncate">
+                        For users who already registered with Google
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-400 font-medium tracking-normal select-none">
-                    {authMode === 'signin' ? 'For users who already registered with google' : 'Set up clinical space securely in 1 click'}
-                  </span>
+                </Button>
+
+                {/* 2) Create Account with Google (First-Time Users) */}
+                <Button 
+                  onClick={async () => {
+                    setAuthError('');
+                    setAuthLoading(true);
+                    try {
+                      await login();
+                    } catch (err: any) {
+                      console.error("Google register error:", err);
+                      if (err?.code === 'auth/popup-closed-by-user' || err?.message?.includes('popup-closed-by-user')) {
+                        setAuthError('Sign-in cancelled. The Google authentication popup was closed.');
+                      } else if (err?.code === 'auth/cancelled-popup-request' || err?.message?.includes('cancelled-popup-request')) {
+                        setAuthError('Only one sign-in popup can be active at a time.');
+                      } else if (err?.message) {
+                        setAuthError(err.message);
+                      } else {
+                        setAuthError('Could not authenticate with Google. Please try again.');
+                      }
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }}
+                  disabled={authLoading}
+                  className="w-full py-5 flex flex-col items-center justify-center gap-1 bg-indigo-50/40 dark:bg-indigo-950/20 border-2 border-indigo-100/75 dark:border-indigo-900/30 hover:border-indigo-600 dark:hover:border-indigo-500 text-indigo-950 dark:text-indigo-200 transition-all shadow-sm hover:shadow-md rounded-2xl group text-left px-5 h-15"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    {authLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-indigo-600 shrink-0" />
+                    ) : (
+                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform shrink-0" alt="Google" />
+                    )}
+                    <div className="flex-grow min-w-0">
+                      <span className="font-extrabold text-[14px] leading-tight block text-left text-indigo-900 dark:text-indigo-300">
+                        Create Account with Google
+                      </span>
+                      <span className="text-[10px] text-indigo-600/90 dark:text-indigo-400 font-semibold tracking-normal block text-left select-none leading-none mt-0.5 truncate">
+                        Set up your compliance profile securely in 1 click
+                      </span>
+                    </div>
+                  </div>
                 </Button>
 
                 {/* Redirect login fallback button */}
@@ -371,7 +382,7 @@ export const AuthView = () => {
                     }
                   }}
                   disabled={authLoading}
-                  className="w-full text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-center flex items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity"
+                  className="w-full text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-center flex items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity pt-1"
                 >
                   Trouble with popups? Try secure Google Redirect instead ➜
                 </button>
@@ -451,7 +462,7 @@ export const AuthView = () => {
                   }}
                   className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
                 >
-                  {authMode === 'signin' ? "Don't have an account? Sign up here" : "Already have an email password account? Sign In"}
+                  {authMode === 'signin' ? "Don't have an account? Sign up here" : "Already have an email password account? Log In"}
                 </button>
               </div>
 
