@@ -148,6 +148,23 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     return unsubscribe;
   }, []);
 
+  // Forced sign-out for mobile on first visit/mount to always display the landing page
+  useEffect(() => {
+    const checkMobileSession = async () => {
+      const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      const isRedirecting = sessionStorage.getItem('isGoogleRedirecting') === 'true';
+      if (isMobileDevice && !isRedirecting) {
+        try {
+          await signOut(auth);
+          console.log("Forced mobile session logout to show landing page");
+        } catch (err) {
+          console.error("Forced logout failed:", err);
+        }
+      }
+    };
+    checkMobileSession();
+  }, []);
+
   // Handle Redirect Result
   useEffect(() => {
     getRedirectResult(auth)
@@ -158,6 +175,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       })
       .catch((error) => {
         console.error("Error in redirect login flow:", error);
+      })
+      .finally(() => {
+        sessionStorage.removeItem('isGoogleRedirecting');
       });
   }, []);
 
@@ -243,8 +263,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loginWithRedirect = async () => {
     try {
+      sessionStorage.setItem('isGoogleRedirecting', 'true');
       await signInWithGoogleRedirect();
     } catch (error) {
+      sessionStorage.removeItem('isGoogleRedirecting');
       console.error(error);
       throw error;
     }
