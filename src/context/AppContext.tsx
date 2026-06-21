@@ -264,8 +264,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const signup = async (userData: Partial<User>) => {
     if (!firebaseUser) return;
     
-    // Sole admin access for specific email
-    const assignedRole = firebaseUser.email === "f3xofenadine@gmail.com" ? "ADMIN" : (userData.role || "RBT");
+    // Let clinical role be chosen, while administrative access is preserved in the UI/context via isAdmin helper
+    const assignedRole = userData.role || "RBT";
 
     const newUser = cleanData({
       id: firebaseUser.uid,
