@@ -26,6 +26,17 @@ export const AuthView = () => {
     certNumber: '',
   });
 
+  // Keep track of any active safety timer for Google Popups
+  const googleTimerRef = React.useRef<any>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (googleTimerRef.current) {
+        clearTimeout(googleTimerRef.current);
+      }
+    };
+  }, []);
+
   // Automatically switch to "Finish Profile" if firebaseUser exists but no profile yet
   React.useEffect(() => {
     if (firebaseUser && !currentUser) {
@@ -288,6 +299,16 @@ export const AuthView = () => {
                   onClick={async () => {
                     setAuthError('');
                     setAuthLoading(true);
+
+                    if (googleTimerRef.current) {
+                      clearTimeout(googleTimerRef.current);
+                    }
+                    googleTimerRef.current = setTimeout(() => {
+                      setAuthLoading(false);
+                      setAuthError('Sign-in window timed out. If you closed the Google popup or it got blocked, you can try clicking again.');
+                      googleTimerRef.current = null;
+                    }, 15000);
+
                     try {
                       await login();
                     } catch (err: any) {
@@ -302,6 +323,10 @@ export const AuthView = () => {
                         setAuthError('Could not authenticate with Google. Please try again.');
                       }
                     } finally {
+                      if (googleTimerRef.current) {
+                        clearTimeout(googleTimerRef.current);
+                        googleTimerRef.current = null;
+                      }
                       setAuthLoading(false);
                     }
                   }}
@@ -330,6 +355,16 @@ export const AuthView = () => {
                   onClick={async () => {
                     setAuthError('');
                     setAuthLoading(true);
+
+                    if (googleTimerRef.current) {
+                      clearTimeout(googleTimerRef.current);
+                    }
+                    googleTimerRef.current = setTimeout(() => {
+                      setAuthLoading(false);
+                      setAuthError('Account creation timed out. If you closed the Google popup or it got blocked, you can try clicking again.');
+                      googleTimerRef.current = null;
+                    }, 15000);
+
                     try {
                       await login();
                     } catch (err: any) {
@@ -344,6 +379,10 @@ export const AuthView = () => {
                         setAuthError('Could not authenticate with Google. Please try again.');
                       }
                     } finally {
+                      if (googleTimerRef.current) {
+                        clearTimeout(googleTimerRef.current);
+                        googleTimerRef.current = null;
+                      }
                       setAuthLoading(false);
                     }
                   }}

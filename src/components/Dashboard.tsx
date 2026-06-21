@@ -66,7 +66,7 @@ export const Dashboard = () => {
     return {
       totalMins,
       targetMins,
-      percentage: targetMins > 0 ? Math.min(200, (totalMins / targetMins) * 100) : 0, // Prevent NaN by checking targetMins
+      percentage: targetMins > 0 ? Math.min(200, (totalMins / targetMins) * 100) : 100, // Handle targetMins === 0 as 100% compliant
       observationCount,
       groupPercentage: totalMins > 0 ? (groupMins / totalMins) * 100 : 0
     };
