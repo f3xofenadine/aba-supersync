@@ -203,7 +203,9 @@ export const Dashboard = () => {
                               "text-[10px] font-bold uppercase",
                               stats.percentage >= 100 ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
                             )}>
-                              {stats.percentage.toFixed(1)}% of 5%
+                              {stats.percentage >= 100 
+                                ? "Compliant" 
+                                : `${Math.max(0, (stats.targetMins - stats.totalMins) / 60).toFixed(1)} Hrs Needed`}
                             </span>
                           </div>
                           <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -343,7 +345,7 @@ export const Dashboard = () => {
                 )}>
                   {rbtStats.percentage >= 100 
                     ? "Compliant" 
-                    : `${Math.round(100 - rbtStats.percentage)}% Remaining (${Math.max(0, (rbtStats.targetMins - rbtStats.totalMins) / 60).toFixed(1)} Hrs Remaining)`}
+                    : `${Math.max(0, (rbtStats.targetMins - rbtStats.totalMins) / 60).toFixed(1)} Hrs Needed`}
                 </span>
               </div>
               <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
