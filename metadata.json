@@ -1,0 +1,6 @@
+{
+  "name": "ABA SuperSync",
+  "description": "A collaborative platform for RBTs and BCBAs to manage associations, track supervision logs, and ensure BACB compliance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

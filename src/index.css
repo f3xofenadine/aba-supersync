@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-handwriting: "Inter", cursive;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    @apply text-gray-200 antialiased bg-gray-950 transition-colors duration-300;
+  }
+  input::-webkit-calendar-picker-indicator {
+    filter: invert(71%) sepia(91%) saturate(945%) hue-rotate(177deg) brightness(101%) contrast(98%);
+  }
+}
+
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+  }
+  
+  aside, header, .print\:hidden, nav, button:not(.print-allow) {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+}

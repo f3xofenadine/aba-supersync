@@ -1,0 +1,162 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ---------------------------------------------------------
+    // Helper Functions
+    // ---------------------------------------------------------
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "f3xofenadine@gmail.com";
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isParticipant(data) {
+      return isSignedIn() && (
+        (data.participants is list && request.auth.uid in data.participants) ||
+        (request.auth.uid == data.rbtId || request.auth.uid == data.bcbaId) ||
+        (isSignedIn() && data.get('participants', []) is list && request.auth.uid in data.get('participants', []))
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Validation Helpers
+    // ---------------------------------------------------------
+
+    function isValidUser(data) {
+      return data.id is string
+        && data.email is string && data.email.size() <= 200
+        && data.name is string && data.name.size() <= 100
+        && data.role in ['RBT', 'BCBA', 'BCBA-D', 'ADMIN']
+        && (!('monthlyDirectHours' in data) || data.monthlyDirectHours is number)
+        && (!('manualMonthlyDirectHours' in data) || data.manualMonthlyDirectHours is map)
+        && (!('createdAt' in data) || data.createdAt is number)
+        && (!('lastLoginAt' in data) || data.lastLoginAt is number)
+        && (!('certificationNumber' in data) || (data.certificationNumber is string || data.certificationNumber == null))
+        && (!('avatar' in data) || (data.avatar is string || data.avatar == null))
+        && (!('bio' in data) || (data.bio is string || data.bio == null))
+        && (!('state' in data) || (data.state is string || data.state == null))
+        && (!('signature' in data) || (data.signature is string && data.signature.size() <= 1048576)); // 1MB for sig
+    }
+
+    function isValidAssociation(data) {
+      return data.id is string
+        && data.rbtId is string
+        && data.bcbaId is string
+        && data.status in ['PENDING', 'ACCEPTED', 'DECLINED']
+        && data.senderId is string
+        && data.participants is list
+        && data.createdAt is number
+        && data.updatedAt is number;
+    }
+
+    function isValidSession(data) {
+      return data.id is string
+        && data.date is string
+        && data.status in ['DRAFT', 'SIGNED_BY_RBT', 'SIGNED_BY_BCBA', 'COMPLETED']
+        && data.rbtId is string
+        && data.bcbaId is string
+        && (!('participants' in data) || data.participants is list)
+        && (!('deleteRequestedBy' in data) || (data.deleteRequestedBy == null || (data.deleteRequestedBy is string && data.deleteRequestedBy.size() <= 128)));
+    }
+
+    function isValidDirectSession(data) {
+      return data.id is string
+        && data.rbtId is string
+        && data.date is string
+        && data.startTime is string
+        && data.endTime is string
+        && data.durationMinutes is number
+        && data.createdAt is number
+        && (!('clientInitials' in data) || (data.clientInitials is string && data.clientInitials.size() <= 10))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000));
+    }
+
+    // ---------------------------------------------------------
+    // Resource Rules
+    // ---------------------------------------------------------
+
+    // Users
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().id == userId && incoming().createdAt is number;
+      allow update: if isOwner(userId) && isValidUser(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'role', 'certificationNumber', 'avatar', 'bio', 'state', 'signature', 'monthlyDirectHours', 'manualMonthlyDirectHours', 'lastLoginAt']);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Associations
+    match /associations/{assocId} {
+      allow read: if isParticipant(existing());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() 
+        && (request.auth.uid in incoming().participants || incoming().rbtId == request.auth.uid || incoming().bcbaId == request.auth.uid)
+        && isValidAssociation(incoming());
+      allow update: if isParticipant(existing()) && isValidAssociation(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isAdmin() || isParticipant(existing());
+    }
+
+    // Sessions
+    match /sessions/{sessionId} {
+      allow read: if isParticipant(existing());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn()
+        && (request.auth.uid in incoming().participants || incoming().rbtId == request.auth.uid || incoming().bcbaId == request.auth.uid)
+        && isValidSession(incoming());
+      allow update: if isParticipant(existing()) && isValidSession(incoming())
+        && (
+          // Action: Deletion Request (allowed even if completed)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['deleteRequestedBy'])) ||
+          (incoming().diff(existing()).affectedKeys().hasOnly(['deleteRequestedBy', 'updatedAt'])) ||
+
+          // Action: Embed identity snapshots on account deletion (allowed even if completed)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['rbtName', 'rbtCertification', 'rbtRole', 'rbtState', 'bcbaName', 'bcbaCertification', 'bcbaRole', 'bcbaState', 'updatedAt']) ||
+           incoming().diff(existing()).affectedKeys().hasOnly(['rbtName', 'rbtCertification', 'rbtRole', 'rbtState', 'bcbaName', 'bcbaCertification', 'bcbaRole', 'bcbaState'])) ||
+
+          // Other clinical actions only allowed if not completed
+          (existing().status != 'COMPLETED' && (
+            // Action: RBT Sign
+            (incoming().diff(existing()).affectedKeys().hasAny(['rbtSignature', 'status', 'updatedAt', 'rbtSignedAt', 'rbtName', 'rbtCertification', 'rbtRole', 'rbtState']) && request.auth.uid == existing().rbtId) ||
+            // Action: BCBA Sign
+            (incoming().diff(existing()).affectedKeys().hasAny(['bcbaSignature', 'status', 'updatedAt', 'bcbaSignedAt', 'clinicalStrengths', 'growthOpportunities', 'privateNotes', 'bcbaName', 'bcbaCertification', 'bcbaRole', 'bcbaState']) && request.auth.uid == existing().bcbaId) ||
+            // Action: Edit Content (if participant)
+            (incoming().diff(existing()).affectedKeys().hasAny(['date', 'startTime', 'endTime', 'durationMinutes', 'contactType', 'isDirectObservation', 'setting', 'rbtId', 'bcbaId', 'updatedAt', 'rbtName', 'rbtCertification', 'rbtRole', 'rbtState', 'bcbaName', 'bcbaCertification', 'bcbaRole', 'bcbaState']))
+          ))
+        );
+      allow delete: if isAdmin() || (
+        isParticipant(existing()) && 
+        'deleteRequestedBy' in existing() && 
+        existing().deleteRequestedBy != null && 
+        existing().deleteRequestedBy != request.auth.uid
+      );
+    }
+
+    // Direct Sessions
+    match /direct_sessions/{sessionId} {
+      allow read: if isSignedIn() && (resource.data.rbtId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && incoming().rbtId == request.auth.uid && isValidDirectSession(incoming());
+      allow update: if isSignedIn() && existing().rbtId == request.auth.uid && isValidDirectSession(incoming());
+      allow delete: if (isSignedIn() && existing().rbtId == request.auth.uid) || isAdmin();
+    }
+  }
+}

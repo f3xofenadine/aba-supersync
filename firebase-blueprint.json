@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["RBT", "BCBA", "BCBA-D", "ADMIN"] },
+        "certificationNumber": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string" },
+        "state": { "type": "string" },
+        "signature": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "email", "name", "role", "createdAt"]
+    },
+    "Association": {
+      "title": "Association",
+      "description": "Relationship linkage between an RBT and a BCBA",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "rbtId": { "type": "string" },
+        "bcbaId": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED", "DECLINED"] },
+        "senderId": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "rbtId", "bcbaId", "status", "senderId", "createdAt", "updatedAt"]
+    },
+    "SupervisionSession": {
+      "title": "Supervision Session",
+      "description": "Record of a clinical supervision meeting",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "rbtId": { "type": "string" },
+        "bcbaId": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "isDirectObservation": { "type": "boolean" },
+        "contactType": { "type": "string", "enum": ["INDIVIDUAL", "GROUP"] },
+        "isServiceDelivery": { "type": "boolean" },
+        "supervisedHours": { "type": "number" },
+        "taskListItems": { "type": "array" },
+        "clinicalStrengths": { "type": "string" },
+        "growthOpportunities": { "type": "string" },
+        "rbtQuestions": { "type": "string" },
+        "additionalNotes": { "type": "string" },
+        "privateNotes": { "type": "string" },
+        "rbtSignature": { "type": "string" },
+        "bcbaSignature": { "type": "string" },
+        "rbtSignedAt": { "type": "number" },
+        "bcbaSignedAt": { "type": "number" },
+        "rbtName": { "type": "string" },
+        "rbtCertification": { "type": "string" },
+        "rbtRole": { "type": "string" },
+        "rbtState": { "type": "string" },
+        "bcbaName": { "type": "string" },
+        "bcbaCertification": { "type": "string" },
+        "bcbaRole": { "type": "string" },
+        "bcbaState": { "type": "string" },
+        "deleteRequestedBy": { "type": "string" },
+        "updatedAt": { "type": "number" },
+        "status": { "type": "string", "enum": ["DRAFT", "SIGNED_BY_RBT", "SIGNED_BY_BCBA", "COMPLETED"] }
+      },
+      "required": ["id", "date", "startTime", "endTime", "durationMinutes", "rbtId", "bcbaId", "status"]
+    },
+    "DirectSession": {
+      "title": "Direct Session",
+      "description": "Record of direct therapy hours",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "rbtId": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "clientInitials": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "rbtId", "date", "startTime", "endTime", "durationMinutes", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Public and private user profile data"
+    },
+    "/associations/{assocId}": {
+      "schema": "Association",
+      "description": "Active and pending professional associations"
+    },
+    "/sessions/{sessionId}": {
+      "schema": "SupervisionSession",
+      "description": "Supervision logs and feedback"
+    },
+    "/direct_sessions/{sessionId}": {
+      "schema": "DirectSession",
+      "description": "Direct therapy hour logs"
+    }
+  }
+}
