@@ -11,7 +11,7 @@ import { motion } from 'motion/react';
 import { ShieldCheck, UserCircle, BriefcaseMedical, CheckCircle2, ArrowRight, LogOut, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 
 export const AuthView = () => {
-  const { login, loginWithEmail, signupWithEmail, signup, logout, firebaseUser, currentUser, resetDatabase, isAdmin } = useApp();
+  const { login, loginWithRedirect, loginWithEmail, signupWithEmail, signup, logout, firebaseUser, currentUser, resetDatabase, isAdmin } = useApp();
   const [role, setRole] = React.useState<UserRole>('RBT');
   const [isFinishing, setIsFinishing] = React.useState(false);
   const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
@@ -213,14 +213,85 @@ export const AuthView = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Welcome to your clinical supervision dashboard.</p>
               </div>
 
+              {authError && (
+                <div id="auth-error-banner" className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/35 rounded-xl flex items-start gap-2.5 text-xs text-red-700 dark:text-red-400 shadow-sm">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />
+                  <div className="flex-grow text-left">
+                    <span className="leading-normal font-medium block">{authError}</span>
+                    {/* Domain Authorization Helper */}
+                    {!window.location.hostname.includes('localhost') && 
+                     !window.location.hostname.includes('127.0.0.1') && 
+                     !window.location.hostname.includes('firebaseapp.com') && (
+                      <div className="mt-2.5 pt-2.5 border-t border-red-220 dark:border-red-900/30 text-[11px] text-gray-700 dark:text-gray-300 space-y-1.5">
+                        <p className="font-semibold text-red-800 dark:text-red-300">🔑 Web Domain Action Required:</p>
+                        <p>Google Sign-In popups require authorizing this domain in your Firebase project. To fix this instantly:</p>
+                        <ol className="list-decimal pl-4.5 space-y-1">
+                          <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-700">Firebase Console</a></li>
+                          <li>Go to <strong>Authentication</strong> ➜ <strong>Settings</strong> tab</li>
+                          <li>Click on <strong>Authorized domains</strong> ➜ click "Add domain"</li>
+                          <li>Add exactly: <code className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border border-gray-250 dark:border-gray-750/50 rounded select-all font-mono font-bold text-indigo-600 dark:text-indigo-400">{window.location.hostname}</code></li>
+                        </ol>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Note: This is a secure clinical platform security policy enforced by Google Auth.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Primary Google Login Option */}
-              <Button 
-                onClick={() => login()}
-                className="w-full py-6 text-base font-bold flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-600 dark:hover:border-indigo-500 text-gray-900 dark:text-white transition-all shadow-sm hover:shadow group"
-              >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform" alt="Google" />
-                <span>Continue with Google</span>
-              </Button>
+              <div className="space-y-3">
+                <Button 
+                  onClick={async () => {
+                    setAuthError('');
+                    setAuthLoading(true);
+                    try {
+                      await login();
+                    } catch (err: any) {
+                      console.error("Google login error:", err);
+                      if (err?.code === 'auth/popup-closed-by-user' || err?.message?.includes('popup-closed-by-user')) {
+                        setAuthError('Sign-in cancelled. The Google authentication popup was closed.');
+                      } else if (err?.code === 'auth/cancelled-popup-request' || err?.message?.includes('cancelled-popup-request')) {
+                        setAuthError('Only one sign-in popup can be active at a time.');
+                      } else if (err?.message) {
+                        setAuthError(err.message);
+                      } else {
+                        setAuthError('Could not sign in with Google. Please try again.');
+                      }
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }}
+                  disabled={authLoading}
+                  className="w-full py-6 text-base font-bold flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-600 dark:hover:border-indigo-500 text-gray-900 dark:text-white transition-all shadow-sm hover:shadow group"
+                >
+                  {authLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                  ) : (
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform" alt="Google" />
+                  )}
+                  <span>{authLoading ? 'Signing in...' : 'Continue with Google'}</span>
+                </Button>
+
+                {/* Redirect login fallback button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setAuthError('');
+                    setAuthLoading(true);
+                    try {
+                      await loginWithRedirect();
+                    } catch (err: any) {
+                      console.error("Google redirect login error:", err);
+                      setAuthError(err.message || 'Could not initiate redirect sign-in.');
+                      setAuthLoading(false);
+                    }
+                  }}
+                  disabled={authLoading}
+                  className="w-full text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-center flex items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  Trouble with popups? Try secure Google Redirect instead ➜
+                </button>
+              </div>
 
               {/* Minimalist Divider */}
               <div className="relative flex py-2 items-center">
@@ -231,12 +302,7 @@ export const AuthView = () => {
 
               {/* Email & Password Authentication Form */}
               <form onSubmit={handleEmailAuth} className="space-y-4">
-                {authError && (
-                  <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/35 rounded-xl flex items-start gap-2.5 text-xs text-red-700 dark:text-red-400">
-                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                    <span className="leading-normal font-medium">{authError}</span>
-                  </div>
-                )}
+
 
                 <div className="space-y-3.5">
                   <div>

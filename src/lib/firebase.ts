@@ -4,14 +4,14 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import localConfig from '../../firebase-applet-config.json';
-
+ 
 // Use environment variables if available (for Vercel/Production), 
 // otherwise fall back to the local config file.
 const env = (import.meta as any).env || {};
-
+ 
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY || localConfig.apiKey,
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || localConfig.authDomain,
@@ -21,9 +21,9 @@ const firebaseConfig = {
   appId: env.VITE_FIREBASE_APP_ID || localConfig.appId,
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || localConfig.measurementId,
 };
-
+ 
 const databaseId = env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || (localConfig as any).firestoreDatabaseId || '(default)';
-
+ 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, databaseId);
 export const auth = getAuth(app);
@@ -31,6 +31,8 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
-
-// Google Sign In helper
+ 
+// Google Sign In helpers
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signInWithGoogleRedirect = () => signInWithRedirect(auth, googleProvider);
+export { getRedirectResult };

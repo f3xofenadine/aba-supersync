@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { User, Association, SupervisionSession, AssociationStatus, DirectSession } from '../types';
-import { auth, db, signInWithGoogle } from '../lib/firebase';
+import { auth, db, signInWithGoogle, signInWithGoogleRedirect, getRedirectResult } from '../lib/firebase';
 import { 
   onAuthStateChanged, 
   signOut,
@@ -37,6 +37,7 @@ interface AppContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: () => Promise<void>;
+  loginWithRedirect: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -146,6 +147,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     return unsubscribe;
   }, []);
 
+  // Handle Redirect Result
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          console.log("Redirect login successful:", result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Error in redirect login flow:", error);
+      });
+  }, []);
+
   // Sync Current User Profile
   useEffect(() => {
     if (!firebaseUser) return;
@@ -222,6 +236,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await signInWithGoogle();
     } catch (error) {
       console.error(error);
+      throw error;
+    }
+  };
+
+  const loginWithRedirect = async () => {
+    try {
+      await signInWithGoogleRedirect();
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
   };
 
@@ -678,6 +702,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       firebaseUser,
       loading,
       login,
+      loginWithRedirect,
       loginWithEmail,
       signupWithEmail,
       logout,
