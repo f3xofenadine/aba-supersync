@@ -208,9 +208,47 @@ export const AuthView = () => {
             </div>
           ) : (
             <div className="space-y-6 py-1">
+              {/* Elegant Tabs for Sign In vs Sign Up */}
+              <div className="grid grid-cols-2 bg-gray-100/80 dark:bg-gray-800/60 p-1.5 rounded-2xl border border-gray-200/50 dark:border-gray-700/30 mb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setAuthError('');
+                  }}
+                  className={`py-2.5 text-xs font-bold tracking-wide uppercase transition-all duration-350 rounded-xl ${
+                    authMode === 'signin'
+                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm font-extrabold'
+                      : 'text-gray-500 dark:text-gray-450 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Log In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setAuthError('');
+                  }}
+                  className={`py-2.5 text-xs font-bold tracking-wide uppercase transition-all duration-350 rounded-xl ${
+                    authMode === 'signup'
+                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm font-extrabold'
+                      : 'text-gray-500 dark:text-gray-450 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+
               <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Provider Login</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Welcome to your clinical supervision dashboard.</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {authMode === 'signin' 
+                    ? 'Log in to resume tracking and supervising clinical sessions.' 
+                    : 'Track your supervised clinical hours and remain fully in compliance.'}
+                </p>
               </div>
 
               {authError && (
@@ -277,7 +315,7 @@ export const AuthView = () => {
                 </div>
               )}
 
-              {/* Primary Google Login Option */}
+              {/* Dedicated Google Auth pathway */}
               <div className="space-y-3">
                 <Button 
                   onClick={async () => {
@@ -294,21 +332,28 @@ export const AuthView = () => {
                       } else if (err?.message) {
                         setAuthError(err.message);
                       } else {
-                        setAuthError('Could not sign in with Google. Please try again.');
+                        setAuthError('Could not authenticate with Google. Please try again.');
                       }
                     } finally {
                       setAuthLoading(false);
                     }
                   }}
                   disabled={authLoading}
-                  className="w-full py-6 text-base font-bold flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-600 dark:hover:border-indigo-500 text-gray-900 dark:text-white transition-all shadow-sm hover:shadow group"
+                  className="w-full py-6 flex flex-col items-center justify-center gap-1 bg-white dark:bg-gray-800 border-2 border-gray-200/80 dark:border-gray-700/60 hover:border-indigo-600 dark:hover:border-indigo-500 text-gray-900 dark:text-white transition-all shadow-sm hover:shadow-md rounded-2xl group"
                 >
-                  {authLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
-                  ) : (
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform" alt="Google" />
-                  )}
-                  <span>{authLoading ? 'Signing in...' : 'Continue with Google'}</span>
+                  <div className="flex items-center gap-3">
+                    {authLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                    ) : (
+                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 animate-none group-hover:scale-105 transition-transform" alt="Google" />
+                    )}
+                    <span className="font-extrabold text-[15px]">
+                      {authMode === 'signin' ? 'Log In with Google' : 'Create Account with Google'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-400 font-medium tracking-normal select-none">
+                    {authMode === 'signin' ? 'For users who already registered with google' : 'Set up clinical space securely in 1 click'}
+                  </span>
                 </Button>
 
                 {/* Redirect login fallback button */}
@@ -326,7 +371,7 @@ export const AuthView = () => {
                     }
                   }}
                   disabled={authLoading}
-                  className="w-full text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-center flex items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity"
+                  className="w-full text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-center flex items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity"
                 >
                   Trouble with popups? Try secure Google Redirect instead ➜
                 </button>
@@ -335,15 +380,15 @@ export const AuthView = () => {
               {/* Minimalist Divider */}
               <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Or access via Email</span>
+                <span className="flex-shrink mx-4 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                  {authMode === 'signin' ? 'Or login with Email' : 'Or register with Email'}
+                </span>
                 <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
               </div>
 
               {/* Email & Password Authentication Form */}
               <form onSubmit={handleEmailAuth} className="space-y-4">
-
-
-                <div className="space-y-3.5">
+                <div className="space-y-3.5 text-left">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Email Address</label>
                     <div className="relative">
@@ -352,7 +397,7 @@ export const AuthView = () => {
                         type="email" 
                         required 
                         placeholder="clinician@example.com"
-                        className="pl-10"
+                        className="pl-10 h-11"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                       />
@@ -372,7 +417,7 @@ export const AuthView = () => {
                         type="password" 
                         required 
                         placeholder="••••••••"
-                        className="pl-10"
+                        className="pl-10 h-11"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                       />
@@ -383,13 +428,13 @@ export const AuthView = () => {
                 <Button 
                   type="submit" 
                   disabled={authLoading}
-                  className="w-full py-5 text-sm font-bold bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-sm"
+                  className="w-full py-5 text-sm font-bold bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-sm rounded-xl h-11 flex items-center justify-center gap-2"
                 >
                   {authLoading ? (
-                    <div className="flex items-center justify-center gap-2">
+                    <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>{authMode === 'signin' ? 'Signing In...' : 'Registering...'}</span>
-                    </div>
+                    </>
                   ) : (
                     <span>{authMode === 'signin' ? 'Sign In with Email' : 'Register Email Account'}</span>
                   )}
@@ -397,14 +442,14 @@ export const AuthView = () => {
               </form>
 
               {/* Mode Toggle Link */}
-              <div className="text-center">
+              <div className="text-center pt-2">
                 <button 
                   type="button"
                   onClick={() => {
                     setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
                     setAuthError('');
                   }}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
                 >
                   {authMode === 'signin' ? "Don't have an account? Sign up here" : "Already have an email password account? Sign In"}
                 </button>
