@@ -533,7 +533,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                              <Bell className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                            </div>
                            <p className="text-xs font-semibold text-gray-900 dark:text-white mt-1">All caught up!</p>
-                           <p className="text-[11px] text-gray-450 dark:text-gray-550">You have no new clinical notifications.</p>
+                           <p className="text-[11px] text-gray-450 dark:text-gray-550">You have no new notifications.</p>
                          </div>
                        ) : (
                          <>
@@ -544,7 +544,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                                <div className="space-y-1.5">
                                  {incomingRequests.map(assoc => {
                                    const sender = users.find(u => u.id === assoc.senderId);
-                                   const senderName = sender?.name || 'Clinical Colleague';
+                                   const senderName = sender?.name || 'Provider Colleague';
                                    const senderAvatar = sender?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${assoc.senderId}`;
                                    const senderRole = sender?.role || (assoc.senderId === assoc.rbtId ? 'RBT' : 'BCBA');
                                    const senderCert = sender?.certificationNumber ? `Cert #${sender.certificationNumber}` : 'Pending Verification';

@@ -38,7 +38,7 @@ export const SupervisionSessionModal = ({ isOpen, onClose, session }: Supervisio
   );
   const partner = partnerUser || {
     id: currentUser.id === session.rbtId ? session.bcbaId : session.rbtId,
-    name: currentUser.id === session.rbtId ? (session.bcbaName || 'Deleted Supervisor') : (session.rbtName || 'Deleted Clinician'),
+    name: currentUser.id === session.rbtId ? (session.bcbaName || 'Deleted Supervisor') : (session.rbtName || 'Deleted Provider'),
     certificationNumber: currentUser.id === session.rbtId ? session.bcbaCertification : session.rbtCertification,
     role: currentUser.id === session.rbtId ? (session.bcbaRole || 'BCBA') : (session.rbtRole || 'RBT'),
     avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser.id === session.rbtId ? (session.bcbaId || 'bcba') : (session.rbtId || 'rbt')}`
@@ -121,7 +121,7 @@ export const SupervisionSessionModal = ({ isOpen, onClose, session }: Supervisio
             <div className="flex items-center gap-3">
               <img src={partner?.avatar} className="w-8 h-8 rounded-full border border-white dark:border-gray-800 shadow-sm" />
               <div>
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">Partner</p>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">Provider</p>
                 <p className="text-[11px] font-bold text-gray-900 dark:text-white">{partner?.name}</p>
                 <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-tighter">{partner?.role}</p>
               </div>

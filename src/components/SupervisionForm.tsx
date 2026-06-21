@@ -27,6 +27,7 @@ export const SupervisionForm = () => {
   const isBCBA = currentUser?.role === 'BCBA' || currentUser?.role === 'BCBA-D';
   const [step, setStep] = React.useState(1);
   const [infoItem, setInfoItem] = React.useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = React.useState(false);
   const [formData, setFormData] = React.useState({
     partnerId: '',
     date: new Date().toISOString().split('T')[0],
@@ -71,6 +72,14 @@ export const SupervisionForm = () => {
   };
 
   const handleFinish = () => {
+    if (isBCBA) {
+      setIsConfirmModalOpen(true);
+    } else {
+      executeFinish();
+    }
+  };
+
+  const executeFinish = () => {
     saveSession({
       ...formData,
       rbtId: isRBT ? currentUser.id : formData.partnerId,
@@ -81,6 +90,9 @@ export const SupervisionForm = () => {
     });
     navigate('/history');
   };
+
+  const selectedPartner = users.find(u => u.id === formData.partnerId);
+  const partnerName = selectedPartner?.name || 'RBT Provider';
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -125,6 +137,16 @@ export const SupervisionForm = () => {
           )}
         </AnimatePresence>
       </div>
+
+      <ConfirmCompletionModal 
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={() => {
+          setIsConfirmModalOpen(false);
+          executeFinish();
+        }}
+        partnerName={partnerName}
+      />
     </div>
   );
 };
@@ -172,7 +194,7 @@ const StepOne = ({ formData, setFormData, connectedUsers, duration, onNext }: an
     <Card className="p-8 space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider transition-colors">Supervision Partner</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider transition-colors">Supervision Provider</label>
           <div className="relative">
              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
              <select 
@@ -180,7 +202,7 @@ const StepOne = ({ formData, setFormData, connectedUsers, duration, onNext }: an
                onChange={e => setFormData({ ...formData, partnerId: e.target.value })}
                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none transition-colors"
              >
-               <option value="">Select a partner...</option>
+               <option value="">Select a provider...</option>
                {connectedUsers.map((u: any) => u && (
                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                ))}
@@ -490,3 +512,97 @@ const StepThree = ({ formData, setFormData, isRBT, isBCBA, onBack, onFinish }: a
     </div>
   </motion.div>
 );
+
+interface ConfirmCompletionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  partnerName: string;
+}
+
+const ConfirmCompletionModal: React.FC<ConfirmCompletionModalProps> = ({ isOpen, onClose, onConfirm, partnerName }) => {
+  const [isChecked, setIsChecked] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsChecked(false);
+    }
+  }, [isOpen]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/60"
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800"
+          >
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-none">Confirm Completion</h2>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Supervisor Attestation</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                As a supervisor (BCBA/BCBA-D), you are completing and filing this supervision session note with <span className="font-bold text-indigo-600 dark:text-indigo-400">{partnerName}</span>.
+              </p>
+
+              <div className="p-4 bg-gray-50 dark:bg-gray-850 rounded-xl space-y-3 border border-gray-100 dark:border-gray-800">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className={cn(
+                    "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 mt-0.5",
+                    isChecked ? "bg-teal-600 dark:bg-teal-500 border-teal-600 dark:border-teal-500" : "border-gray-300 dark:border-gray-700 group-hover:border-teal-500"
+                  )}>
+                     {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="hidden"
+                    checked={isChecked}
+                    onChange={e => setIsChecked(e.target.checked)}
+                  />
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 select-none leading-relaxed">
+                    I confirm that this supervision session note, content covered, and professional feedback/action plans are complete, accurate, and ready to be filed.
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs font-bold">
+                  Go Back
+                </Button>
+                <Button 
+                  disabled={!isChecked}
+                  onClick={onConfirm} 
+                  className="flex-[2] rounded-xl h-10 bg-teal-600 hover:bg-teal-700 text-white font-bold gap-2 text-xs"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Confirm & File Note
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};

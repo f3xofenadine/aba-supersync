@@ -180,7 +180,7 @@ export const Dashboard = () => {
               {myRbts.length === 0 && pendingRbts.length === 0 ? (
                 <div className="py-20 text-center">
                   <p className="text-sm text-gray-500 dark:text-gray-400">No associated RBTs found in your network.</p>
-                  <Link to="/people" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-2 inline-block">Visit Clinical Directory →</Link>
+                  <Link to="/people" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-2 inline-block">Visit Provider Directory →</Link>
                 </div>
               ) : (
                 <>
@@ -341,7 +341,9 @@ export const Dashboard = () => {
                   "text-[10px] font-bold px-1.5 py-0.5 rounded",
                   rbtStats.percentage >= 100 ? "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                 )}>
-                  {rbtStats.percentage >= 100 ? "Compliant" : `${Math.round(100 - rbtStats.percentage)}% Remaining`}
+                  {rbtStats.percentage >= 100 
+                    ? "Compliant" 
+                    : `${Math.round(100 - rbtStats.percentage)}% Remaining (${Math.max(0, (rbtStats.targetMins - rbtStats.totalMins) / 60).toFixed(1)} Hrs Remaining)`}
                 </span>
               </div>
               <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">

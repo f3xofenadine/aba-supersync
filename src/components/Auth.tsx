@@ -446,7 +446,7 @@ export const AuthView = () => {
                       <Input 
                         type="email" 
                         required 
-                        placeholder="clinician@example.com"
+                        placeholder="provider@example.com"
                         className="pl-10 h-11"
                         value={email}
                         onChange={e => setEmail(e.target.value)}

@@ -35,6 +35,7 @@ export const HistoryView = () => {
     signSession, 
     saveSession,
     updateUser,
+    deleteSession,
     requestSessionDeletion,
     approveSessionDeletion,
     cancelSessionDeletion,
@@ -45,6 +46,7 @@ export const HistoryView = () => {
   const [activeTab, setActiveTab] = React.useState<'supervision' | 'direct'>('supervision');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportRange, setExportRange] = useState<{ start: string; end: string } | null>(null);
   const [editingBulkSession, setEditingBulkSession] = useState<{ monthStr: string; hours: number } | null>(null);
@@ -72,6 +74,30 @@ export const HistoryView = () => {
   const isRBT = currentUser.role === 'RBT';
   const isBCBA = currentUser.role === 'BCBA' || currentUser.role === 'BCBA-D';
 
+  const partners = React.useMemo(() => {
+    const partnerMap = new Map<string, string>();
+    if (isRBT) {
+      // Collect BCBAs from users
+      users.filter(u => u.role === 'BCBA' || u.role === 'BCBA-D').forEach(u => partnerMap.set(u.id, u.name));
+      // Also collect from sessions in case user isn't in users list
+      sessions.forEach(s => {
+        if (s.rbtId === currentUser.id && s.bcbaId) {
+          partnerMap.set(s.bcbaId, s.bcbaName || partnerMap.get(s.bcbaId) || 'Deleted Supervisor');
+        }
+      });
+    } else if (isBCBA) {
+      // Collect RBTs from users
+      users.filter(u => u.role === 'RBT').forEach(u => partnerMap.set(u.id, u.name));
+      // Also collect from sessions in case user isn't in users list
+      sessions.forEach(s => {
+        if (s.bcbaId === currentUser.id && s.rbtId) {
+          partnerMap.set(s.rbtId, s.rbtName || partnerMap.get(s.rbtId) || 'Deleted Provider');
+        }
+      });
+    }
+    return Array.from(partnerMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [users, sessions, currentUser, isRBT, isBCBA]);
+
   const filterByDate = (dateStr: string) => {
     const d = new Date(dateStr);
     const matchesYear = d.getFullYear().toString() === selectedYear;
@@ -79,10 +105,19 @@ export const HistoryView = () => {
     return matchesYear && matchesMonth;
   };
 
-  const mySessions = sessions.filter(s => 
-    ((isRBT && s.rbtId === currentUser.id) || (isBCBA && s.bcbaId === currentUser.id)) &&
-    filterByDate(s.date)
-  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const mySessions = sessions.filter(s => {
+    const isMySession = (isRBT && s.rbtId === currentUser.id) || (isBCBA && s.bcbaId === currentUser.id);
+    if (!isMySession) return false;
+    
+    if (!filterByDate(s.date)) return false;
+    
+    if (selectedPartnerId !== 'all') {
+      if (isRBT && s.bcbaId !== selectedPartnerId) return false;
+      if (isBCBA && s.rbtId !== selectedPartnerId) return false;
+    }
+    
+    return true;
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const myDirectSessions = React.useMemo(() => {
     const individual = directSessions
@@ -131,7 +166,15 @@ export const HistoryView = () => {
   const exportSessions = exportRange 
     ? filterSessionsByRange(
         activeTab === 'supervision' 
-          ? sessions.filter(s => (isRBT && s.rbtId === currentUser.id) || (isBCBA && s.bcbaId === currentUser.id))
+          ? sessions.filter(s => {
+              const isMySession = (isRBT && s.rbtId === currentUser.id) || (isBCBA && s.bcbaId === currentUser.id);
+              if (!isMySession) return false;
+              if (selectedPartnerId !== 'all') {
+                if (isRBT && s.bcbaId !== selectedPartnerId) return false;
+                if (isBCBA && s.rbtId !== selectedPartnerId) return false;
+              }
+              return true;
+            })
           : myDirectSessions,
         exportRange.start, 
         exportRange.end
@@ -226,7 +269,7 @@ export const HistoryView = () => {
               <th className="p-3 text-left uppercase tracking-wider border w-24">Date</th>
               <th className="p-3 text-left uppercase tracking-wider border w-32">Type</th>
               <th className="p-3 text-left uppercase tracking-wider border w-20">Hours</th>
-              <th className="p-3 text-left uppercase tracking-wider border">Partner / Client</th>
+              <th className="p-3 text-left uppercase tracking-wider border">Provider / Client</th>
               <th className="p-3 text-left uppercase tracking-wider border w-40">RBT Sign (TS)</th>
               <th className="p-3 text-left uppercase tracking-wider border w-40">BCBA Sign (TS)</th>
             </tr>
@@ -243,7 +286,7 @@ export const HistoryView = () => {
                 const partnerUser = users.find(u => (currentUser.role === 'RBT' ? u.id === s.bcbaId : u.id === s.rbtId));
                 const partner = partnerUser || {
                   id: currentUser.role === 'RBT' ? s.bcbaId : s.rbtId,
-                  name: currentUser.role === 'RBT' ? (s.bcbaName || 'Deleted Supervisor') : (s.rbtName || 'Deleted Clinician'),
+                  name: currentUser.role === 'RBT' ? (s.bcbaName || 'Deleted Supervisor') : (s.rbtName || 'Deleted Provider'),
                   certificationNumber: currentUser.role === 'RBT' ? s.bcbaCertification : s.rbtCertification,
                   role: currentUser.role === 'RBT' ? (s.bcbaRole || 'BCBA') : (s.rbtRole || 'RBT')
                 };
@@ -281,7 +324,7 @@ export const HistoryView = () => {
             <p className="text-[11px] font-bold text-black uppercase tracking-widest mb-1">Official Clinical Attestation</p>
             <p className="text-[10px] text-gray-500 leading-relaxed max-w-2xl">
               The clinical data above represents authentic records synchronous with the SuperSync platform audit trails. 
-              Signatures provided via timestamps indicate verified cryptographic verification of the respective clinicians 
+              Signatures provided via timestamps indicate verified cryptographic verification of the respective providers 
               at the time of processing.
             </p>
           </div>
@@ -347,12 +390,24 @@ export const HistoryView = () => {
               >
                 {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
+              <div className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+              <select 
+                value={selectedPartnerId}
+                onChange={(e) => { setSelectedPartnerId(e.target.value); setSelectedSession(null); }}
+                className="bg-transparent text-[10px] font-bold text-gray-700 dark:text-gray-300 outline-none px-2 py-0.5 max-w-[120px] truncate"
+              >
+                <option value="all">{isRBT ? 'All BCBAs' : 'All RBTs'}</option>
+                {partners.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
-            {(selectedMonth !== new Date().getMonth().toString() || selectedYear !== new Date().getFullYear().toString()) && (
+            {(selectedMonth !== new Date().getMonth().toString() || selectedYear !== new Date().getFullYear().toString() || selectedPartnerId !== 'all') && (
               <button 
                 onClick={() => {
                   setSelectedMonth(new Date().getMonth().toString());
                   setSelectedYear(new Date().getFullYear().toString());
+                  setSelectedPartnerId('all');
                   setSelectedSession(null);
                 }}
                 className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
@@ -382,7 +437,7 @@ export const HistoryView = () => {
                 );
                 const partner = partnerUser || {
                   id: currentUser.role === 'RBT' ? session.bcbaId : session.rbtId,
-                  name: currentUser.role === 'RBT' ? (session.bcbaName || 'Deleted Supervisor') : (session.rbtName || 'Deleted Clinician'),
+                  name: currentUser.role === 'RBT' ? (session.bcbaName || 'Deleted Supervisor') : (session.rbtName || 'Deleted Provider'),
                   certificationNumber: currentUser.role === 'RBT' ? session.bcbaCertification : session.rbtCertification,
                   role: currentUser.role === 'RBT' ? (session.bcbaRole || 'BCBA') : (session.rbtRole || 'RBT')
                 };
@@ -407,7 +462,7 @@ export const HistoryView = () => {
                       <p className={cn("text-[9px] font-bold uppercase tracking-widest leading-none mb-1", selectedSession === session.id ? "text-indigo-100" : "text-indigo-600 dark:text-indigo-400")}>
                         {new Date(session.date).toLocaleDateString()}
                       </p>
-                      <p className="text-sm font-bold truncate">{partner?.name || 'Unknown Clinician'}</p>
+                      <p className="text-sm font-bold truncate">{partner?.name || 'Unknown Provider'}</p>
                       <p className={cn("text-[10px] opacity-70", selectedSession === session.id ? "text-white" : "text-gray-500")}>
                         {formatMinutes(session.durationMinutes)} • {session.contactType}
                       </p>
@@ -502,18 +557,29 @@ export const HistoryView = () => {
                             size="icon" 
                             className={cn(
                               "w-8 h-8 transition-colors",
-                              activeSession.deleteRequestedBy 
+                              !isBCBA && activeSession.deleteRequestedBy 
                                 ? "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20" 
                                 : "text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                             )}
-                            onClick={() => {
-                              if (!activeSession.deleteRequestedBy) {
-                                requestSessionDeletion(activeSession.id);
-                              } else if (activeSession.deleteRequestedBy === currentUser.id) {
-                                cancelSessionDeletion(activeSession.id);
+                            onClick={async () => {
+                              if (isBCBA) {
+                                if (window.confirm("Are you sure you want to permanently delete this session? As a supervisor, this action will remove the session instantly for both parties.")) {
+                                  await deleteSession(activeSession.id);
+                                  setSelectedSession(null);
+                                }
+                              } else {
+                                if (!activeSession.deleteRequestedBy) {
+                                  if (window.confirm("RBTs cannot delete supervision sessions directly. This will send a deletion request to your supervising BCBA for approval. Proceed?")) {
+                                    await requestSessionDeletion(activeSession.id);
+                                  }
+                                } else if (activeSession.deleteRequestedBy === currentUser.id) {
+                                  if (window.confirm("Would you like to cancel your deletion request for this session?")) {
+                                    await cancelSessionDeletion(activeSession.id);
+                                  }
+                                }
                               }
                             }}
-                            title={activeSession.deleteRequestedBy ? "Cancel Deletion Request" : "Request Deletion"}
+                            title={isBCBA ? "Delete Session" : (activeSession.deleteRequestedBy ? "Cancel Deletion Request" : "Request Deletion")}
                          >
                             <Trash2 className="w-4 h-4" />
                          </Button>
@@ -531,8 +597,8 @@ export const HistoryView = () => {
                        <div className="flex items-center gap-2">
                          <Trash2 className="w-3 h-3" />
                          {activeSession.deleteRequestedBy === currentUser.id 
-                           ? "Waiting for clinical partner to approve deletion..." 
-                           : "Partner has requested to delete this clinical record."}
+                           ? "Waiting for BCBA to approve deletion..." 
+                           : "The RBT provider has requested to delete this clinical record."}
                        </div>
                        {activeSession.deleteRequestedBy !== currentUser.id && (
                          <div className="flex gap-2">
@@ -543,7 +609,7 @@ export const HistoryView = () => {
                              Deny
                            </button>
                            <button 
-                             onClick={() => approveSessionDeletion(activeSession.id)}
+                             onClick={async () => { await approveSessionDeletion(activeSession.id); setSelectedSession(null); }}
                              className="px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                            >
                              Approve & Delete
@@ -711,7 +777,7 @@ export const HistoryView = () => {
                                  )
                                )}
                             </div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-white transition-colors">{users.find(u => u.id === activeSession.rbtId)?.name || activeSession.rbtName || 'Deleted Clinician'}</p>
+                            <p className="text-xs font-bold text-gray-900 dark:text-white transition-colors">{users.find(u => u.id === activeSession.rbtId)?.name || activeSession.rbtName || 'Deleted Provider'}</p>
                             <p className="text-[10px] text-gray-400 dark:text-gray-500 transition-colors">{activeSession.rbtSignedAt ? new Date(activeSession.rbtSignedAt).toLocaleString() : 'Not signed yet'}</p>
                          </div>
                          <div className="space-y-4">

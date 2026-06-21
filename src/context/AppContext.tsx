@@ -49,6 +49,7 @@ interface AppContextType {
   saveSession: (session: Partial<SupervisionSession>) => Promise<string>;
   saveDirectSession: (session: Partial<DirectSession>) => Promise<string>;
   deleteDirectSession: (sessionId: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
   requestSessionDeletion: (sessionId: string) => Promise<void>;
   approveSessionDeletion: (sessionId: string) => Promise<void>;
   cancelSessionDeletion: (sessionId: string) => Promise<void>;
@@ -379,7 +380,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const bcba = users.find(u => u.id === session.bcbaId);
 
     if (rbt && rbt.role !== 'RBT') {
-      throw new Error('Invalid record: The selected clinician must have the RBT role.');
+      throw new Error('Invalid record: The selected provider must have the RBT role.');
     }
     if (bcba && bcba.role !== 'BCBA' && bcba.role !== 'BCBA-D') {
       throw new Error('Invalid record: The selected supervisor must have a BCBA/BCBA-D role.');
@@ -447,6 +448,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await deleteDoc(doc(db, 'direct_sessions', sessionId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `direct_sessions/${sessionId}`);
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      await deleteDoc(doc(db, 'sessions', sessionId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `sessions/${sessionId}`);
     }
   };
   
@@ -714,6 +723,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       saveSession,
       saveDirectSession,
       deleteDirectSession,
+      deleteSession,
       requestSessionDeletion,
       approveSessionDeletion,
       cancelSessionDeletion,

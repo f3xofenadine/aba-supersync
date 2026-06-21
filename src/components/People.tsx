@@ -120,8 +120,8 @@ export const PeopleView = () => {
   const foundUserByEmail = searchTerm && searchTerm.includes('@') && !findPeopleUsers.some(u => u.email === searchTerm.toLowerCase()) && !connectedUsers.some(u => u.email === searchTerm.toLowerCase());
 
   const sendEmailInvite = () => {
-    const subject = encodeURIComponent("Invitation to join my clinical supervision network on SuperSync");
-    const body = encodeURIComponent(`Hello,\n\nI would like to connect with you on SuperSync, a clinical supervision and compliance portal for BCBAs and RBTs. This will help us track our supervision hours and compliance documents more efficiently.\n\nYou can join here: ${window.location.origin}\n\nBest regards,\n${currentUser.name}`);
+    const subject = encodeURIComponent("Invitation to join my supervision network on SuperSync");
+    const body = encodeURIComponent(`Hello,\n\nI would like to connect with you on SuperSync, a supervision and compliance portal for BCBAs and RBTs. This will help us track our supervision hours and compliance documents more efficiently.\n\nYou can join here: ${window.location.origin}\n\nBest regards,\n${currentUser.name}`);
     window.location.href = `mailto:${searchTerm}?subject=${subject}&body=${body}`;
   };
 
@@ -138,7 +138,7 @@ export const PeopleView = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">People</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your clinical network and add new associations.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your supervision network and add new associations.</p>
         </div>
 
         {/* Subtabs Selectors */}
@@ -284,7 +284,7 @@ export const PeopleView = () => {
             </section>
           )}
 
-          {/* Active associated clinicians list */}
+          {/* Active associated providers list */}
           <section className="space-y-4">
             <h2 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
               My Clinical Connections
@@ -304,7 +304,7 @@ export const PeopleView = () => {
                   className="mt-6 bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-lg shadow-indigo-100 dark:shadow-none gap-2"
                 >
                   <Search className="w-4 h-4" />
-                  Find Clinicians
+                  Find Providers
                 </Button>
               </div>
             ) : (
@@ -406,7 +406,7 @@ export const PeopleView = () => {
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-indigo-500" />
-                Add Clinician to Network
+                Add Provider to Network
               </h2>
               <Button 
                 onClick={handleRefresh}
@@ -419,7 +419,7 @@ export const PeopleView = () => {
               </Button>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Search for credentialed supervisors (BCBAs) or clinicians (RBTs) already registered, or send an professional invite.
+              Search for credentialed supervisors (BCBAs) or providers (RBTs) already registered, or send a professional invite.
             </p>
             
             <div className="flex flex-col md:flex-row gap-3 max-w-2xl">
@@ -450,7 +450,7 @@ export const PeopleView = () => {
             {foundUserByEmail && (
               <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 mt-3 flex items-center gap-1.5 uppercase tracking-wide">
                 <Mail className="w-3.5 h-3.5" />
-                Clinician not found in directory. Generate professional email invitation above!
+                Provider not found in directory. Generate professional email invitation above!
               </p>
             )}
           </div>
@@ -458,7 +458,7 @@ export const PeopleView = () => {
           {/* Search Result List */}
           <section className="space-y-4">
             <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-              {searchTerm ? 'Search Results' : 'Registered Clinicians Available to Add'}
+              {searchTerm ? 'Search Results' : 'Registered Providers Available to Add'}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -541,7 +541,7 @@ export const PeopleView = () => {
                   <div className="w-14 h-14 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                     <UserX className="w-7 h-7 text-gray-300 dark:text-gray-600" />
                   </div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">No available clinicians found</h3>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">No available providers found</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 px-6 mt-1">
                     Try checking spelling or type an email address to invite them to join the portal.
                   </p>
