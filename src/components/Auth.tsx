@@ -218,21 +218,60 @@ export const AuthView = () => {
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />
                   <div className="flex-grow text-left">
                     <span className="leading-normal font-medium block">{authError}</span>
-                    {/* Domain Authorization Helper */}
-                    {!window.location.hostname.includes('localhost') && 
-                     !window.location.hostname.includes('127.0.0.1') && 
-                     !window.location.hostname.includes('firebaseapp.com') && (
-                      <div className="mt-2.5 pt-2.5 border-t border-red-220 dark:border-red-900/30 text-[11px] text-gray-700 dark:text-gray-300 space-y-1.5">
-                        <p className="font-semibold text-red-800 dark:text-red-300">🔑 Web Domain Action Required:</p>
-                        <p>Google Sign-In popups require authorizing this domain in your Firebase project. To fix this instantly:</p>
-                        <ol className="list-decimal pl-4.5 space-y-1">
-                          <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-700">Firebase Console</a></li>
-                          <li>Go to <strong>Authentication</strong> ➜ <strong>Settings</strong> tab</li>
-                          <li>Click on <strong>Authorized domains</strong> ➜ click "Add domain"</li>
-                          <li>Add exactly: <code className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border border-gray-250 dark:border-gray-750/50 rounded select-all font-mono font-bold text-indigo-600 dark:text-indigo-400">{window.location.hostname}</code></li>
-                        </ol>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Note: This is a secure clinical platform security policy enforced by Google Auth.</p>
+                    
+                    {/* Diagnostic check for API key errors */}
+                    {authError.toLowerCase().includes('api-key-not-valid') || authError.toLowerCase().includes('api key') ? (
+                      <div className="mt-2.5 pt-2.5 border-t border-red-200 dark:border-red-900/30 text-[11px] text-gray-700 dark:text-gray-300 space-y-2.5">
+                        <p className="font-semibold text-red-800 dark:text-red-300">🛠️ How to Fix "API Key Not Valid" on custom domains:</p>
+                        <p>This error occurs on custom deployments (such as Vercel) due to security policies. To resolve it, follow these steps:</p>
+                        
+                        <div className="space-y-2 pl-0.5">
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white">Reason A: Google Cloud API Key Restrictions (Most Common):</p>
+                            <p className="pl-3.5 mt-0.5 text-gray-650 dark:text-gray-400 leading-relaxed">
+                              The default Firebase API Key generated in AI Studio is locked down for security via HTTP referrer restrictions to only allow <code className="font-mono text-[10px] bg-gray-150 dark:bg-gray-800/80 px-1 py-0.5 rounded">*.run.app</code> and <code className="font-mono text-[10px] bg-gray-150 dark:bg-gray-800/80 px-1 py-0.5 rounded">localhost</code>.
+                            </p>
+                            <ol className="list-decimal pl-7.5 mt-1 text-gray-650 dark:text-gray-400 space-y-1">
+                              <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-700">Google Cloud Credentials Console</a>.</li>
+                              <li>Locate the API key used by your Firebase project.</li>
+                              <li>Under <strong>Website restrictions</strong>, add your custom Vercel domain: <code className="font-mono text-[10px] bg-gray-150 dark:bg-gray-800/80 px-1 py-0.5 rounded">*.vercel.app/*</code> or add <code className="font-mono text-[10px] bg-gray-150 dark:bg-gray-800/80 px-1 py-0.5 rounded">*.{window.location.hostname}/*</code>.</li>
+                              <li>Alternatively, set <strong>Key restrictions</strong> to "None" (safe for testing) to allow any domain.</li>
+                            </ol>
+                          </div>
+
+                          <div className="pt-1.5 border-t border-gray-200/30 dark:border-gray-800/35">
+                            <p className="font-semibold text-gray-900 dark:text-white">Reason B: Missing/Incorrect Environment Variables on Vercel:</p>
+                            <p className="pl-3.5 mt-0.5 text-gray-650 dark:text-gray-400 leading-relaxed">
+                              If you linked a custom Firebase database for your live production app, you must add these Environment Variables in your Vercel Dashboard under <strong>Settings ➜ Environment Variables</strong>:
+                            </p>
+                            <ul className="list-disc pl-7.5 mt-1.5 text-gray-650 dark:text-gray-400 space-y-0.5 font-mono text-[10px] grid grid-cols-1 sm:grid-cols-2">
+                              <li>VITE_FIREBASE_API_KEY</li>
+                              <li>VITE_FIREBASE_AUTH_DOMAIN</li>
+                              <li>VITE_FIREBASE_PROJECT_ID</li>
+                              <li>VITE_FIREBASE_STORAGE_BUCKET</li>
+                              <li>VITE_FIREBASE_MESSAGING_SENDER_ID</li>
+                              <li>VITE_FIREBASE_APP_ID</li>
+                            </ul>
+                          </div>
+                        </div>
                       </div>
+                    ) : (
+                      /* Domain Authorization Helper (General domain errors) */
+                      !window.location.hostname.includes('localhost') && 
+                      !window.location.hostname.includes('127.0.0.1') && 
+                      !window.location.hostname.includes('firebaseapp.com') && (
+                        <div className="mt-2.5 pt-2.5 border-t border-red-220 dark:border-red-900/30 text-[11px] text-gray-700 dark:text-gray-300 space-y-1.5">
+                          <p className="font-semibold text-red-800 dark:text-red-300">🔑 Web Domain Action Required:</p>
+                          <p>Google Sign-In popups require authorizing this domain in your Firebase project. To fix this instantly:</p>
+                          <ol className="list-decimal pl-4.5 space-y-1">
+                            <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-700">Firebase Console</a></li>
+                            <li>Go to <strong>Authentication</strong> ➜ <strong>Settings</strong> tab</li>
+                            <li>Click on <strong>Authorized domains</strong> ➜ click "Add domain"</li>
+                            <li>Add exactly: <code className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border border-gray-250 dark:border-gray-750/50 rounded select-all font-mono font-bold text-indigo-600 dark:text-indigo-400">{window.location.hostname}</code></li>
+                          </ol>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Note: This is a secure clinical platform security policy enforced by Google Auth.</p>
+                        </div>
+                      )
                     )}
                   </div>
                 </div>
