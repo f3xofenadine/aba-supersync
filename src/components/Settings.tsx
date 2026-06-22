@@ -7,6 +7,7 @@ import React from 'react';
 import { useApp } from '../hooks/useApp';
 import { Card, Button, Input } from './ui';
 import { SignaturePad } from './SignaturePad';
+import { User as UserType } from '../types';
 import { 
   User, 
   Mail, 
@@ -18,14 +19,18 @@ import {
   Settings,
   Trash2,
   Building2,
-  X
+  X,
+  Users,
+  Search,
+  Calendar,
+  ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 export const SettingsView = () => {
-  const { currentUser, updateUser, resetDatabase, isAdmin, deleteAccount, users } = useApp();
+  const { currentUser, updateUser, resetDatabase, isAdmin, deleteAccount, users, adminDeleteUser } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Align active tab with url parameter or default to 'profile'
@@ -209,13 +214,21 @@ export const SettingsView = () => {
           />
 
           {isAdmin && (
-            <TabButton 
-              active={activeTabFromUrl === 'system'} 
-              onClick={() => setActiveTab('system')} 
-              icon={<Trash2 className="w-4 h-4 shrink-0" />} 
-              label="Reset System" 
-              variant="danger"
-            />
+            <>
+              <TabButton 
+                active={activeTabFromUrl === 'users'} 
+                onClick={() => setActiveTab('users')} 
+                icon={<Users className="w-4 h-4 shrink-0" />} 
+                label="Registered Users" 
+              />
+              <TabButton 
+                active={activeTabFromUrl === 'system'} 
+                onClick={() => setActiveTab('system')} 
+                icon={<Trash2 className="w-4 h-4 shrink-0" />} 
+                label="Reset System" 
+                variant="danger"
+              />
+            </>
           )}
         </aside>
 
@@ -257,6 +270,10 @@ export const SettingsView = () => {
 
             {activeTabFromUrl === 'delete-account' && (
               <DeleteAccountTab loading={loading} deleteAccount={deleteAccount} />
+            )}
+
+            {activeTabFromUrl === 'users' && isAdmin && (
+              <UsersTab users={users} adminDeleteUser={adminDeleteUser} />
             )}
 
             {activeTabFromUrl === 'system' && isAdmin && (
@@ -592,6 +609,243 @@ const DeleteAccountTab = ({ loading, deleteAccount }: { loading: boolean, delete
           )}
         </div>
       </div>
+    </motion.div>
+  );
+};
+
+// --- Admin-only Tab: Registered Users List ---
+interface UsersTabProps {
+  users: UserType[];
+  adminDeleteUser: (targetUserId: string) => Promise<void>;
+}
+
+const UsersTab = ({ users, adminDeleteUser }: UsersTabProps) => {
+  const { currentUser } = useApp();
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [roleFilter, setRoleFilter] = React.useState<string>('ALL');
+
+  // Deletion States
+  const [deletingUser, setDeletingUser] = React.useState<UserType | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [errorLocal, setErrorLocal] = React.useState('');
+
+  const filteredUsers = React.useMemo(() => {
+    return users.filter(u => {
+      const nameMatch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const emailMatch = (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const certMatch = (u.certificationNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const orgMatch = (u.organizations || []).some(o => o.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesSearch = nameMatch || emailMatch || certMatch || orgMatch;
+      const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+
+      return matchesSearch && matchesRole;
+    });
+  }, [users, searchTerm, roleFilter]);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    setErrorLocal('');
+    try {
+      await adminDeleteUser(deletingUser.id);
+      setDeletingUser(null);
+    } catch (err: any) {
+      setErrorLocal(err.message || 'Failed to delete clinician record.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, x: 5 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Registered Clinicians Portal</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">View and audit active users, registered emails, credentials, and affiliations.</p>
+        </div>
+        <div className="text-xs font-bold px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-indigo-700 dark:text-indigo-400 self-start sm:self-auto">
+          {filteredUsers.length} Clinicians Listed
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="sm:col-span-2 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input 
+            className="pl-9 h-10 bg-gray-50/50 dark:bg-gray-800/40 focus:ring-2 focus:ring-indigo-500 text-xs" 
+            placeholder="Search by name, email, BACB cert #, or organization..." 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div>
+          <select
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+            className="w-full h-10 px-3 pr-8 rounded-xl border border-gray-150 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-800/40 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="ALL">All Roles</option>
+            <option value="ADMIN">ADMIN</option>
+            <option value="BCBA">BCBA</option>
+            <option value="BCBA-D">BCBA-D</option>
+            <option value="RBT">RBT</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto border border-gray-100 dark:border-gray-800/65 rounded-xl">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50/70 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 text-[10px] font-black uppercase tracking-wider text-gray-400">
+              <th className="px-4 py-3.5">Clinician</th>
+              <th className="px-4 py-3.5">Contact Detail (Email)</th>
+              <th className="px-4 py-3.5">Clinical Credentials</th>
+              <th className="px-4 py-3.5">Affiliated Companies</th>
+              <th className="px-4 py-3.5">Registration Date</th>
+              <th className="px-4 py-3.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-800/65 font-medium">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-850/20 text-xs transition-colors">
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-indigo-100/40 dark:border-indigo-900/30">
+                        {(user.name || 'C').charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900 dark:text-white leading-snug">{user.name || 'Anonymous User'}</div>
+                        <div className="text-[10px] font-mono text-gray-400 mt-0.5 select-all">ID: {user.id.slice(0, 8)}...</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5 font-mono select-all text-gray-600 dark:text-gray-300">
+                    <div className="flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{user.email}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className={cn(
+                        "px-2 py-0.5 text-[10px] font-extrabold tracking-wider uppercase rounded-md border",
+                        user.role?.includes('BCBA') 
+                          ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30"
+                          : user.role === 'ADMIN'
+                          ? "bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-100 dark:border-purple-900/30"
+                          : "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/30"
+                      )}>
+                        {user.role}
+                      </span>
+                      {user.certificationNumber && (
+                        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold dark:text-gray-400">
+                          <Award className="w-3 h-3 text-indigo-500" />
+                          <span>{user.certificationNumber}</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    {user.organizations && user.organizations.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        {user.organizations.map((org, index) => (
+                          <span key={index} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-700/50">
+                            <Building2 className="w-2.5 h-2.5 text-gray-400" />
+                            <span>{org}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 italic">No organizations</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5 font-mono text-gray-500 text-[10px]">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    {user.id !== currentUser?.id && (
+                      <button
+                        onClick={() => {
+                          setDeletingUser(user);
+                          setErrorLocal('');
+                        }}
+                        className="p-1.5 h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/25 rounded-lg inline-flex items-center justify-center transition-colors border border-transparent hover:border-rose-100 dark:hover:border-rose-900/40"
+                        title="Delete User Record"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400 italic">
+                  No clinicians found matching the filter query
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modern Confirmation Modal overlay */}
+      <AnimatePresence>
+        {deletingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-6 space-y-4"
+            >
+              <div className="flex items-start gap-3.5">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/35 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-100/50 dark:border-rose-900/30">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-black text-gray-900 dark:text-white">Confirm User Deletion</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                    You are trying to delete the user profile for <span className="font-bold text-gray-900 dark:text-white">{deletingUser.name || deletingUser.email}</span>.
+                  </p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold mt-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/30 p-2.5 rounded-lg leading-relaxed">
+                    Warning: This will purge their personal profile document, professional supervisor links, and private direct data templates permanently logs.
+                  </p>
+                </div>
+              </div>
+
+              {errorLocal && (
+                <div className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 p-3 rounded-xl border border-rose-100/50 dark:border-rose-900/35">
+                  {errorLocal}
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  onClick={() => setDeletingUser(null)}
+                  variant="outline"
+                  className="flex-1 h-10 border-gray-200 dark:border-gray-800 text-xs font-bold"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmDelete}
+                  className="flex-1 h-10 bg-rose-600 hover:bg-rose-700 text-white border-0 text-xs font-bold"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

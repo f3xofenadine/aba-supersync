@@ -55,6 +55,7 @@ interface AppContextType {
   cancelSessionDeletion: (sessionId: string) => Promise<void>;
   signSession: (sessionId: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
+  adminDeleteUser: (targetUserId: string) => Promise<void>;
   resetDatabase: () => Promise<void>;
   pendingSignaturesCount: number;
   isAdmin: boolean;
@@ -686,6 +687,78 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const adminDeleteUser = async (targetUserId: string) => {
+    if (!firebaseUser || !isAdmin) {
+      throw new Error('Unauthorized administrative request.');
+    }
+
+    const targetUser = users.find(u => u.id === targetUserId);
+    if (!targetUser) {
+      throw new Error('Target user profile not found.');
+    }
+
+    try {
+      // 1. Fetch all supervision sessions of this user
+      const sessionsSnapshot = await getDocs(
+        query(collection(db, 'sessions'), where('participants', 'array-contains', targetUserId))
+      );
+
+      // 2. Archive their identity on all their sessions (including completed ones!)
+      if (!sessionsSnapshot.empty) {
+        const batch = writeBatch(db);
+        sessionsSnapshot.docs.forEach((docSnap) => {
+          const s = docSnap.data();
+          const updateData: any = {};
+          if (s.rbtId === targetUserId) {
+            updateData.rbtName = targetUser.name || 'Deleted User';
+            updateData.rbtCertification = targetUser.certificationNumber || '';
+            updateData.rbtRole = targetUser.role;
+            updateData.rbtState = targetUser.state || '';
+          }
+          if (s.bcbaId === targetUserId) {
+            updateData.bcbaName = targetUser.name || 'Deleted User';
+            updateData.bcbaCertification = targetUser.certificationNumber || '';
+            updateData.bcbaRole = targetUser.role;
+            updateData.bcbaState = targetUser.state || '';
+          }
+          batch.update(docSnap.ref, updateData);
+        });
+        await batch.commit();
+      }
+
+      // 3. Delete any professional associations holding this user
+      const assocSnapshot = await getDocs(
+        query(collection(db, 'associations'), where('participants', 'array-contains', targetUserId))
+      );
+      if (!assocSnapshot.empty) {
+        const batch = writeBatch(db);
+        assocSnapshot.docs.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+      }
+
+      // 4. Delete their private direct sessions (if any)
+      const directSnapshot = await getDocs(
+        query(collection(db, 'direct_sessions'), where('rbtId', '==', targetUserId))
+      );
+      if (!directSnapshot.empty) {
+        const batch = writeBatch(db);
+        directSnapshot.docs.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+      }
+
+      // 5. Delete their user profile doc in Firestore
+      await deleteDoc(doc(db, 'users', targetUserId));
+
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.DELETE, `admin-account-deletion-${targetUserId}`);
+      throw error;
+    }
+  };
+
   const pendingSignaturesCount = currentUser ? sessions.filter(s => {
     const isRBT = currentUser.role === 'RBT';
     const isBCBA = currentUser.role === 'BCBA' || currentUser.role === 'BCBA-D';
@@ -751,6 +824,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       cancelSessionDeletion,
       signSession,
       deleteAccount,
+      adminDeleteUser,
       resetDatabase,
       pendingSignaturesCount,
       isAdmin,
