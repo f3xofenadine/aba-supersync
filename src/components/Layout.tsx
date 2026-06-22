@@ -27,6 +27,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DirectHoursModal } from './DirectHoursModal';
 import { SupervisionSessionModal } from './SupervisionSessionModal';
+import { AdSenseUnit } from './AdSenseUnit';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { 
@@ -351,11 +352,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   </div>
                   <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
                 </div>
-                <div className="aspect-[16/9] bg-white dark:bg-gray-900 rounded-lg flex items-center justify-center border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative group cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <p className="text-[10px] text-gray-400 font-medium italic text-center px-4 leading-tight group-hover:text-gray-500 transition-colors">
-                    AdSense Placement<br/><span className="text-[8px] opacity-60">Subtle Integration</span>
-                  </p>
-                </div>
+                <AdSenseUnit />
               </div>
             </div>
           </nav>
